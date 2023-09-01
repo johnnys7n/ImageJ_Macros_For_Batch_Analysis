@@ -4,6 +4,7 @@ from ij import IJ, WindowManager, ImagePlus
 from ij.gui import GenericDialog, Roi, ImageRoi
 from ij.process import AutoThresholder, ImageProcessor
 from ij.plugin import RGBStackMerge, frame
+from ij.measure import ResultsTable
 
 def main():
 	dir = IJ.getDir('Select the Folder') #changes dir to the folder selected
@@ -18,7 +19,19 @@ def main():
 	if answer:
 		channels_merger(combined_files_list, ans488, ans555, ans647)
 
-	frame.RoiManager.reset()
+	# cleans the ROI Manager
+	RM = frame.RoiManager()
+	rm = RM.getRoiManager()
+	rm.reset()
+
+	# cleans the Results Table
+	if IJ.isResultsWindow():
+		RT = ResultsTable()
+		rt = RT.getResultsTable()
+		size = rt.size()
+		IJ.deleteRows(0,size)
+	
+	
 	print('Finished Processing....Enjoy Analyzing! :)')
 		
 
@@ -101,7 +114,7 @@ def initial_dialog():
 	'''
 	Generic Dialog of processor confirmation
 	'''
-	gd = GenericDialog('Confirm Processor')
+	gd = GenericDialog('Processing first five images')
 	gd.addMessage('Which Channels Do you Want to Merge?')
 	gd.addMessage('Please Select 2 or More Channels')
 	gd.addCheckbox('488', True)
