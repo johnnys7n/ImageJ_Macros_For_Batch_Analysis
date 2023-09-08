@@ -78,7 +78,6 @@ def channels_merger(file_list, a1, a2, a3):
 	'''
 	Function that will merge the images for each scene
 	'''
-	# creating a list of working files
 	for files in file_list:
 		working_list = []
 		for file in files:
@@ -90,10 +89,10 @@ def channels_merger(file_list, a1, a2, a3):
 				working_list.append(img_555)
 			if 'AF647' in file and a3:
 				img_647 = ImagePlus(file)
-				working_list.append(img_647)
+				img_647.show()
+				working_list.append(img_488)
 		print('creating merged image....')
-		if len(working_list) == 2: # only if two of the three channels are selected
-			print('working on merging 2 images...')
+		if len(working_list) == 2:
 			result = RGBStackMerge.mergeChannels([working_list[1], working_list[0]], False)
 			result.setDisplayMode(IJ.COLOR)
 			IJ.run(result, "Enhance Contrast", "saturated=0.35")
@@ -101,17 +100,16 @@ def channels_merger(file_list, a1, a2, a3):
 			IJ.run(result, "Enhance Contrast", "saturated=0.35")  
 			result.setDisplayMode(IJ.COMPOSITE)
 			result.show()
-		if len(working_list) == 3: # if all three channels are selected
-			print('working on merging 3 images...')
-			result = RGBStackMerge.mergeChannels([working_list[1], working_list[0],None ,working_list[2]], False)
+		if len(working_list) == 3:
+			result = RGBStackMerge.mergeChannels([working_list[1], working_list[0], working_list[2]], False)
 			result.setDisplayMode(IJ.COLOR)
 			IJ.run(result, "Enhance Contrast", "saturated=0.35")
 			result.setC(2)
 			IJ.run(result, "Enhance Contrast", "saturated=0.35")  
-			result.setC(3)
-			IJ.run(result, "Enhance Contrast", "saturated=0.35")  
 			result.setDisplayMode(IJ.COMPOSITE)
 			result.show()
+#		result.show()
+#		IJ.run("Merge Channels...", "c1=[img_555] c2=[img_488] c4=[img_647] create");
 
 def initial_dialog():
 	'''
