@@ -5,37 +5,41 @@ from ij.gui import GenericDialog, Roi, ImageRoi, ImageWindow
 from ij.process import AutoThresholder, ImageProcessor
 from ij.plugin import RGBStackMerge, frame, ImageCalculator
 from ij.measure import ResultsTable
+from ij.util import FontUtil
 
 def main():
 	
 	dir= IJ.getDir('Select the Folder that contains the Images') #changes dir to the folder selected
 	files_list = os.listdir(dir) # outputs the list of files in this folder
 
+
 	
 	new_files_list = select_files(files_list, dir)
 	combined_files_list = select_channels(new_files_list)
 
 	print(combined_files_list)
-	answer, ans488, ans555, ans647, anssub = initial_dialog()
+	answer, ans488, ans555, ans647, anssub, ansclear = initial_dialog()
 	
-	if answer and not anssub:
+	if answer and anssub == 'No':
 		channels_merger(combined_files_list, ans488, ans555, ans647)
 
-	if answer and anssub:
-		subtractor_merger(combined_files_list, ans488, ans555, ans647)
+	elif answer and anssub != 'No':
+		subtractor_merger(combined_files_list, ans488, ans555, ans647, anssub)
+	else:
+		print('program stopped by user')
 		
-
-	# cleans the ROI Manager
-	RM = frame.RoiManager()
-	rm = RM.getRoiManager()
-	rm.reset()
-
-	# cleans the Results Table
-	if IJ.isResultsWindow():
-		RT = ResultsTable()
-		rt = RT.getResultsTable()
-		size = rt.size()
-		IJ.deleteRows(0,size)
+	if ansclear:
+		# cleans the ROI Manager
+		RM = frame.RoiManager()
+		rm = RM.getRoiManager()
+		rm.reset()
+	
+		# cleans the Results Table
+		if IJ.isResultsWindow():
+			RT = ResultsTable()
+			rt = RT.getResultsTable()
+			size = rt.size()
+			IJ.deleteRows(0,size)
 	
 	
 	print('Finished Processing....Enjoy Analyzing! :)')
@@ -119,7 +123,7 @@ def channels_merger(file_list, a1, a2, a3):
 			result.show()
 			ImageWindow(result).maximize()
 
-def subtractor_merger(file_list, a1, a2, a3):
+def subtractor_merger(file_list, a1, a2, a3, ans_sub):
 	'''
 	This is a function that will remove the 647 channel from the other two and return the two images
 	'''
@@ -136,8 +140,15 @@ def subtractor_merger(file_list, a1, a2, a3):
 				img_647 = ImagePlus(file)
 				working_list.append(img_647)
 		print('subtracting out the 647 channel....')
-		result1 = ImageCalculator.run(img_488, img_647, 'subtract')
-		result2 = ImageCalculator.run(img_555, img_647, 'subtract')
+		if ans_sub == '488':
+			result1 = ImageCalculator.run(img_647, img_488, 'subtract')
+			result2 = ImageCalculator.run(img_555, img_488, 'subtract')
+		elif ans_sub == '555':
+			result1 = ImageCalculator.run(img_488, img_555, 'subtract')
+			result2 = ImageCalculator.run(img_647, img_555, 'subtract')
+		else:
+			result1 = ImageCalculator.run(img_488, img_647, 'subtract')
+			result2 = ImageCalculator.run(img_555, img_647, 'subtract')
 
 		print('working on merging the subtracted images')
 		final_image = RGBStackMerge.mergeChannels([result2, result1], False)
@@ -153,24 +164,33 @@ def initial_dialog():
 	'''
 	Generic Dialog of processor confirmation
 	'''
+	font_1 = FontUtil.getFont('Arial', 14, 20)
+	font_2 = FontUtil.getFont('Arial', 14, 15)
 	gd = GenericDialog('Processing first five images')
-	gd.addMessage('Which Channels Do you Want to Merge?')
+	gd.addMessage('CD3 CD45 Lectin Image Processor',font_1)
+	gd.addMessage('Which Channels Do you Want to Merge?', font_2)
 	gd.addMessage('Please Select 2 or More Channels')
 	gd.addCheckbox('488', True)
 	gd.addCheckbox('555', True)
 	gd.addCheckbox('647', False)
-	gd.addCheckbox('Subtract Lectin?', False)
+#	gd.addCheckbox('Subtract Lectin?', False)
+	gd.addMessage('Which Channel contains lectin (to subtract)', font_2)
+	gd.addMessage('*Note all three channels must be selected for subtraction*')
+	gd.addRadioButtonGroup('Channels:', ['No', '488', '555', '647'], 1, 4, 'No')
 	gd.setOKLabel('Process All Files')
+	gd.addMessage('Do you wish to clear the output? (ROI + Results Table)', font_2)
+	gd.addCheckbox('Clear Results?', True)
 	gd.showDialog()
 	ans_488 = gd.getNextBoolean()
 	ans_555 = gd.getNextBoolean()
 	ans_647 = gd.getNextBoolean()
-	ans_sub = gd.getNextBoolean()
+	ans_sub = gd.getNextRadioButton()
+	ans_clear = gd.getNextBoolean()
 	if gd.wasOKed():
-		return True, ans_488, ans_555, ans_647, ans_sub
+		return True, ans_488, ans_555, ans_647, ans_sub, ans_clear
 	else:
 		return False
 	
 	
-if __name__ == '__main__':
+if __name__ == '__main__': 
 	main()
