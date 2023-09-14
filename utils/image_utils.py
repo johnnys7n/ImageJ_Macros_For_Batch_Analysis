@@ -1,6 +1,9 @@
 from ij import IJ, WindowManager, ImagePlus
-from ij.gui import GenericDialog, Roi, ImageRoi
+from ij.gui import GenericDialog, Roi, ImageRoi, ImageWindow
 from ij.process import AutoThresholder, ImageProcessor
+from ij.plugin import RGBStackMerge, frame, ImageCalculator
+from ij.measure import ResultsTable
+from ij.util import FontUtil
 
 # importing the os module to communicate with the local files
 import os
@@ -20,28 +23,34 @@ def preprocess_image(file_input, channel_value):
 	1. file_input: the file path to the image file (tif only)
 	'''
 	# filter out the DAPI and NOT ORG images
-	if 'ORG' in file_input and channel_value in file_input:
-		img = ImagePlus(file_input) # opens the image using the ImagePlus API
-		img.show()
-		img_2 = IJ.run(img, 'Enhance Contrast', 'saturated=0.35')
+	img = ImagePlus(file_input) # opens the image using the ImagePlus API
+	IJ.run(img, 'Enhance Contrast', 'saturated=0.35')
+	img.show()
 
 def process_all_images_dialog():
 	'''
 	Function that will generate a dialog box to require the user to proceed
 	'''
 	gd = GenericDialog('Processing All Images')
-	
-	gd.addMessage('1. Please choose which channels to analyze')
+	font_1 = FontUtil.getFont('Arial', 14, 20)
+	font_2 = FontUtil.getFont('Arial', 14, 15)
+	gd.addMessage('Image Processor', font_1)
+	gd.addMessage('1. Please choose which channels to analyze', font_2)
 	gd.addStringField('What Channel:', 'DAPI', 1)
 #	gd.addRadioButtonGroup('Channels List', ['Dapi', '488', '555', '647'], 1, 4, 'Dapi')
-	gd.addMessage('2. Do you wish to process all the images?')
+	gd.addMessage('2. Do you wish to process all the images?', font_2)
 	gd.addMessage('NOTE: this will only process the ORG images')
+	gd.addMessage('3. Do you wish to only look at one image?', font_2)
+	gd.addCheckbox('Get One Image?: ', False)
 	gd.setOKLabel('Process Images')
 	gd.showDialog() # displaying the dialog box
 
 	channel_value = gd.getNextString()
+	rep_image_ans = gd.getNextBoolean()
 	if gd.wasOKed():
-		return True, channel_value
+		return True, channel_value, rep_image_ans
+	else:
+		return None
 
 def create_selection_dialog(file_input):
     gd = GenericDialog('Please Create a Selection')
@@ -61,4 +70,4 @@ def manual_selection(image_input):
 	# Parameter: 
 	1. image_input: file path of image to be analyzed
 	'''
-	pass
+	

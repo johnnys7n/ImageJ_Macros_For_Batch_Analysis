@@ -8,23 +8,24 @@ from ij.measure import ResultsTable
 from ij.util import FontUtil
 
 def main():
-	
+
+	# getting the directory file list and path
 	dir= IJ.getDir('Select the Folder that contains the Images') #changes dir to the folder selected
 	files_list = os.listdir(dir) # outputs the list of files in this folder
 
-
+	# selecting only the useful images within the file list
+	new_path_list, new_files_list = select_files(files_list, dir)
+	org_working_file_list = select_channels_working(new_path_list, new_files_list)
 	
-	new_files_list = select_files(files_list, dir)
-	combined_files_list = select_channels(new_files_list)
-
-	print(combined_files_list)
+	print(org_working_file_list)
+	# merging and processing images
 	answer, ans488, ans555, ans647, anssub, ansclear = initial_dialog()
 	
 	if answer and anssub == 'No':
-		channels_merger(combined_files_list, ans488, ans555, ans647)
+		channels_merger(org_working_file_list, ans488, ans555, ans647)
 
 	elif answer and anssub != 'No':
-		subtractor_merger(combined_files_list, ans488, ans555, ans647, anssub)
+		subtractor_merger(org_working_file_list, ans488, ans555, ans647, anssub)
 	else:
 		print('program stopped by user')
 		
@@ -48,39 +49,32 @@ def select_files(files_list, path):
 	'''
 	Function that creates a new list of files inside the selected directory that is only 488 ORG and 555 ORG
 	'''
-	new_list = []
+	new_file_path_list = []
+	new_file_list = []
 	for file in files_list:
 		if 'DAPI' not in file and 'ORG' in file:
-			new_list.append(path + file)
-	return new_list
+			new_file_path_list.append(path + file)
+			new_file_list.append(file)
+	return new_file_path_list, new_file_list
 
-def select_channels(file_list):
+ 
+def select_channels_working(new_file_list, file_list):
 	'''
-	this function will put the two similar files into a list of lists
+	This is a function for putting all the images in the same scene together
 	'''
-	
-	s1 = []
-	s2 = []
-	s3 = []
-	s4 = []
-	s5 = []
-	s_all = []
-	s_list = {'s1':s1, 's2':s2, 's3':s3, 's4':s4, 's5':s5}
+	scenes_list = []
 	for file in file_list:
-		if 's1' in file:
-			s1.append(file)
-		if 's2' in file:
-			s2.append(file)
-		if 's3' in file:
-			s3.append(file)
-		if 's4' in file:
-			s4.append(file)
-		if 's5' in file:
-			s5.append(file)
-	for name, value in s_list.items():
-		s_all.append(value)
-
-	return s_all
+		x = file.split('_', 2)
+		scenes_list.append(x[1])
+#		scenes_list.append(x[1])
+	unique_scenes = set(scenes_list)
+	list_scenes = list(unique_scenes)
+	scenes_all = []
+	for i, scene in enumerate(list_scenes):
+		add_all = [images for images in new_file_list if scene in images]
+		scenes_all.append(add_all)
+	return scenes_all
+		
 
 def channels_merger(file_list, a1, a2, a3):
 	'''
@@ -152,13 +146,15 @@ def subtractor_merger(file_list, a1, a2, a3, ans_sub):
 
 		print('working on merging the subtracted images')
 		final_image = RGBStackMerge.mergeChannels([result2, result1], False)
+		ImageWindow(final_image).maximize()
+
 		final_image.setDisplayMode(IJ.COLOR)
 		IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
 		final_image.setC(2)
 		IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
 		final_image.setDisplayMode(IJ.COMPOSITE)
 		final_image.show()
-		ImageWindow(final_image).maximize()
+		
 		
 def initial_dialog():
 	'''
