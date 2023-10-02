@@ -7,11 +7,15 @@ from ij.plugin import RGBStackMerge, frame, ImageCalculator
 from ij.measure import ResultsTable
 from ij.util import FontUtil
 
+
 def main():
 
 	# getting the directory file list and path
-	dir= IJ.getDir('Select the Folder that contains the Images') #changes dir to the folder selected
-	files_list = os.listdir(dir) # outputs the list of files in this folder
+	try:
+		dir= IJ.getDir('Select the Folder that contains the Images') #changes dir to the folder selected
+		files_list = os.listdir(dir) # outputs the list of files in this folder
+	except TypeError, UnboundLocalError:
+		print('User cancelled operation')
 
 	# selecting only the useful images within the file list
 	new_path_list, new_files_list = select_files(files_list, dir)
@@ -20,15 +24,15 @@ def main():
 	print(org_working_file_list)
 	# merging and processing images
 	answer, ans488, ans555, ans647, anssub, ansclear = initial_dialog()
-	
-	if answer and anssub == 'No':
-		channels_merger(org_working_file_list, ans488, ans555, ans647)
 
-	elif answer and anssub != 'No':
-		subtractor_merger(org_working_file_list, ans488, ans555, ans647, anssub)
+	if answer:
+		if anssub == 'No':
+			channels_merger(org_working_file_list, ans488, ans555, ans647)
+		elif anssub != 'No':
+			subtractor_merger(org_working_file_list, ans488, ans555, ans647, anssub)
 	else:
 		print('program stopped by user')
-		
+				
 	if ansclear:
 		# cleans the ROI Manager
 		RM = frame.RoiManager()
@@ -94,6 +98,25 @@ def channels_merger(file_list, a1, a2, a3):
 				img_647 = ImagePlus(file)
 				working_list.append(img_647)
 		print('creating merged image....')
+		if len(working_list) == 1: # only one of the channels is selected
+			if a1: # 488
+				img = working_list[0]
+				IJ.run(img, 'Green', '')
+				IJ.run(img, "Enhance Contrast", "saturated=0.35")
+				img.show()
+				ImageWindow(img).maximize()
+			if a2: # 555
+				img = working_list[0]
+				IJ.run(img, 'Red', '')
+				IJ.run(img, "Enhance Contrast", "saturated=0.35")
+				img.show()
+				ImageWindow(img).maximize()
+			if a3: # 647
+				img = working_list[0]
+				IJ.run(img, 'Cyan', '')
+				IJ.run(img, "Enhance Contrast", "saturated=0.35")
+				img.show()
+				ImageWindow(img).maximize()
 		if len(working_list) == 2: # only if two of the three channels are selected
 			print('working on merging 2 images...')
 			result = RGBStackMerge.mergeChannels([working_list[1], working_list[0]], False)
@@ -133,28 +156,30 @@ def subtractor_merger(file_list, a1, a2, a3, ans_sub):
 			if 'AF647' in file and a3:
 				img_647 = ImagePlus(file)
 				working_list.append(img_647)
-		print('subtracting out the 647 channel....')
-		if ans_sub == '488':
-			result1 = ImageCalculator.run(img_647, img_488, 'subtract')
-			result2 = ImageCalculator.run(img_555, img_488, 'subtract')
-		elif ans_sub == '555':
-			result1 = ImageCalculator.run(img_488, img_555, 'subtract')
-			result2 = ImageCalculator.run(img_647, img_555, 'subtract')
-		else:
-			result1 = ImageCalculator.run(img_488, img_647, 'subtract')
-			result2 = ImageCalculator.run(img_555, img_647, 'subtract')
-
-		print('working on merging the subtracted images')
-		final_image = RGBStackMerge.mergeChannels([result2, result1], False)
-		final_image = pixel_scaler(final_image)
-		ImageWindow(final_image).maximize()
-
-		final_image.setDisplayMode(IJ.COLOR)
-		IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
-		final_image.setC(2)
-		IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
-		final_image.setDisplayMode(IJ.COMPOSITE)
-		final_image.show()
+		print('subtracting out the {} channel....'.format(ans_sub))
+		try:
+			if ans_sub == '488':
+				result1 = ImageCalculator.run(img_647, img_488, 'subtract')
+				result2 = ImageCalculator.run(img_555, img_488, 'subtract')		
+			elif ans_sub == '555':
+				result1 = ImageCalculator.run(img_488, img_555, 'subtract')
+				result2 = ImageCalculator.run(img_647, img_555, 'subtract')
+			else:
+				result1 = ImageCalculator.run(img_488, img_647, 'subtract')
+				result2 = ImageCalculator.run(img_555, img_647, 'subtract')
+			print('working on merging the subtracted images')
+			final_image = RGBStackMerge.mergeChannels([result2, result1], False)
+			final_image = pixel_scaler(final_image)
+			ImageWindow(final_image).maximize()
+	
+			final_image.setDisplayMode(IJ.COLOR)
+			IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
+			final_image.setC(2)
+			IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
+			final_image.setDisplayMode(IJ.COMPOSITE)
+			final_image.show()
+		except UnboundLocalError:
+			print('user has selected an empty channel')
 
 def pixel_scaler(image):
 	'''
@@ -174,7 +199,7 @@ def initial_dialog():
 	gd = GenericDialog('Processing first five images')
 	gd.addMessage('CD3 CD45 Lectin Image Processor',font_1)
 	gd.addMessage('Which Channels Do you Want to Merge?', font_2)
-	gd.addMessage('Please Select 2 or More Channels')
+	gd.addMessage('Please Select 1 or more Channels')
 	gd.addCheckbox('488', True)
 	gd.addCheckbox('555', True)
 	gd.addCheckbox('647', False)
@@ -194,7 +219,7 @@ def initial_dialog():
 	if gd.wasOKed():
 		return True, ans_488, ans_555, ans_647, ans_sub, ans_clear
 	else:
-		return False
+		return False, False, False, False, 0, False
 	
 	
 if __name__ == '__main__': 
