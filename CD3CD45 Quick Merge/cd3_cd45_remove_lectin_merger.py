@@ -146,6 +146,7 @@ def subtractor_merger(file_list, a1, a2, a3, ans_sub):
 
 		print('working on merging the subtracted images')
 		final_image = RGBStackMerge.mergeChannels([result2, result1], False)
+		final_image = pixel_scaler(final_image)
 		ImageWindow(final_image).maximize()
 
 		final_image.setDisplayMode(IJ.COLOR)
@@ -154,7 +155,15 @@ def subtractor_merger(file_list, a1, a2, a3, ans_sub):
 		IJ.run(final_image, "Enhance Contrast", "saturated=0.35")
 		final_image.setDisplayMode(IJ.COMPOSITE)
 		final_image.show()
-		
+
+def pixel_scaler(image):
+	'''
+	function for scaling images according to the axioscan px-um conversion
+	'''
+	print('rescaling the images from pixels to um...')
+	IJ.run(image, "Set Scale...","distance=1 known=0.44 unit=um")
+	return image
+	
 		
 def initial_dialog():
 	'''
